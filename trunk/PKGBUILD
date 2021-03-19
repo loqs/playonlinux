@@ -2,28 +2,35 @@
 # Contributor: K. Hampf <khampf@users.sourceforge.net>
 # Contributor: Skunnyk <skunnyk@archlinux.fr>
 
+_pkgname=POL-POM-4
 pkgname=playonlinux
-pkgver=4.3.4
-pkgrel=3
+pkgver=4.4
+pkgrel=1
 pkgdesc="GUI for managing Windows programs under linux"
 url="https://www.playonlinux.com/"
 license=('GPL')
-depends=('wine' 'imagemagick' 'xterm' 'wxpython' 'cabextract' 'unzip' 'mesa-demos' 'gnupg'
+depends=('wine' 'imagemagick' 'xterm' 'python-wxpython' 'cabextract' 'unzip' 'mesa-demos' 'gnupg'
          'icoutils' 'xdg-user-dirs' 'libxmu' 'netcat' 'wget' 'p7zip' 'jq' 'perl')
 arch=('x86_64')
-source=(https://www.playonlinux.com/script_files/PlayOnLinux/${pkgver/.0/}/PlayOnLinux_${pkgver/.0/}.tar.gz
+source=($pkgname-$pkgver.tar.gz::https://github.com/PlayOnLinux/$_pkgname/archive/$pkgver.tar.gz
         PlayOnLinuxUrlHandler.desktop)
 options=(!strip)
-sha256sums=('17c3dfd27962ce5a7a0c014850b33188e203d008c9dc71faa230e35fcada2d05'
+sha256sums=('a3536243772002d17b9c5fcfd616844134bcfe126ce7b7b24eb971ba1f63365d'
             '304d8e998d271383c44acdf386c4664cd65463d5f7f5e3c1c7563fbd8f71a6a8')
 
 package() {
-  cd "$srcdir/$pkgname"
+  cd "$srcdir/$_pkgname-$pkgver"
 
   sed -i "s/libexec/bin/g" Makefile
 
-  make PREFIX=/usr
+  make PREFIX=/usr PYTHON=true # bytecode will be generated later
   make DESTDIR="${pkgdir}" install
+
+  # generate bytecode and strip $pkgdir from embedded paths:
+  python -m compileall -d "/usr/share/playonlinux/python/" \
+    "${pkgdir}/usr/share/playonlinux/python/"
+  python -O -m compileall -d "/usr/share/playonlinux/python/" \
+    "${pkgdir}/usr/share/playonlinux/python/"
 
   install -d "${pkgdir}"/usr/share/playonlinux/lang
   mv -v "${pkgdir}"/usr/share/locale "${pkgdir}"/usr/share/playonlinux/lang/locale
@@ -31,7 +38,6 @@ package() {
 
   install -m755 "${srcdir}"/PlayOnLinuxUrlHandler.desktop "${pkgdir}"/usr/share/applications/PlayOnLinuxUrlHandler.desktop
   install -m755 playonlinux-url_handler "${pkgdir}"/usr/bin/playonlinux-url_handler
-  sed -i "s/python /python2 /g" "$pkgdir"/usr/{bin,share/playonlinux}/playonlinux-url_handler
 
 #  sed -i "s/ %F//g" $pkgdir/usr/share/applications/playonlinux.desktop
 }
